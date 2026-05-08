@@ -1,0 +1,244 @@
+{% extends 'admin/base.html' %}
+{% block title %}Обращения • Feedback Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.tg-layout {
+    display: flex;
+    height: calc(100vh - 120px);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+.tg-sidebar {
+    width: 320px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dee2e6;
+    background: #fff;
+}
+.tg-sidebar-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.tg-sidebar-head h6 { margin: 0; font-size: 15px; font-weight: 600; }
+.tg-badge-count {
+    margin-left: auto;
+    background: #2AABEE; color: #fff;
+    font-size: 12px; border-radius: 10px; padding: 2px 8px;
+}
+.tg-filters {
+    padding: 8px 12px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex; gap: 5px; flex-wrap: wrap;
+}
+.tg-filter-btn {
+    font-size: 11px; padding: 3px 10px;
+    border-radius: 12px; border: 1px solid #dee2e6;
+    background: transparent; color: #6c757d;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    transition: .12s;
+}
+.tg-filter-btn.active, .tg-filter-btn:hover {
+    background: #2AABEE; color: #fff; border-color: #2AABEE;
+}
+.tg-search-wrap {
+    padding: 8px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+.tg-search-wrap input {
+    width: 100%; border: 1px solid #dee2e6;
+    border-radius: 18px; padding: 6px 14px;
+    font-size: 13px; outline: none; background: #f8f9fa;
+}
+.tg-search-wrap input:focus { border-color: #2AABEE; background: #fff; }
+.tg-chat-list { overflow-y: auto; flex: 1; }
+.tg-chat-item {
+    display: flex; align-items: flex-start;
+    gap: 10px; padding: 11px 12px;
+    cursor: pointer; border-bottom: 1px solid #f0f0f0;
+    text-decoration: none; color: inherit;
+    transition: background .1s;
+}
+.tg-chat-item:hover { background: #f5f7fa; }
+.tg-chat-item.active { background: #e3f2fd; }
+.tg-av {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0;
+}
+.av-bug     { background: #dc3545; }
+.av-feature { background: #198754; }
+.av-question{ background: #0d6efd; }
+.av-other   { background: #6c757d; }
+.tg-ci-body { flex: 1; min-width: 0; }
+.tg-ci-top  { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.tg-ci-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #212529; }
+.tg-ci-time { font-size: 11px; color: #9e9e9e; flex-shrink: 0; }
+.tg-ci-prev { font-size: 12px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.tg-ci-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; }
+.tg-unread  { background: #2AABEE; color: #fff; font-size: 11px; border-radius: 10px; padding: 1px 6px; }
+.tg-status-pill { font-size: 10px; padding: 1px 7px; border-radius: 8px; font-weight: 500; }
+.s-new         { background: #e7f3ff; color: #0d6efd; }
+.s-in_progress { background: #fff8e1; color: #856404; }
+.s-resolved    { background: #d1f5d3; color: #155724; }
+.s-rejected    { background: #f8d7da; color: #721c24; }
+.tg-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; flex: 1; color: #adb5bd;
+    font-size: 14px; gap: 8px; padding: 40px;
+}
+.tg-placeholder {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #f0f2f5; color: #adb5bd; gap: 10px;
+}
+.bulk-bar {
+    padding: 8px 12px; border-top: 1px solid #dee2e6;
+    background: #f8f9fa; display: flex; align-items: center;
+    gap: 6px; flex-wrap: wrap;
+}
+.bulk-bar .btn { font-size: 12px; padding: 3px 9px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('admin.feedback_bulk_action') }}" id="bulk-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="action" id="bulk-action-val" value="">
+
+<div class="tg-layout">
+    <div class="tg-sidebar">
+
+        <div class="tg-sidebar-head">
+            <i class="bi bi-chat-dots fs-5" style="color:#2AABEE"></i>
+            <h6>Обращения</h6>
+            <span class="tg-badge-count">{{ feedbacks.total }}</span>
+        </div>
+
+        <div class="tg-filters">
+            <a href="{{ url_for('admin.feedback_list', search=filters.search, type=filters.type) }}"
+               class="tg-filter-btn {% if not filters.status %}active{% endif %}">Все</a>
+            <a href="{{ url_for('admin.feedback_list', status='new', search=filters.search, type=filters.type) }}"
+               class="tg-filter-btn {% if filters.status == 'new' %}active{% endif %}">Новые</a>
+            <a href="{{ url_for('admin.feedback_list', status='in_progress', search=filters.search, type=filters.type) }}"
+               class="tg-filter-btn {% if filters.status == 'in_progress' %}active{% endif %}">В работе</a>
+            <a href="{{ url_for('admin.feedback_list', status='resolved', search=filters.search, type=filters.type) }}"
+               class="tg-filter-btn {% if filters.status == 'resolved' %}active{% endif %}">Решено</a>
+            <a href="{{ url_for('admin.feedback_list', type='bug', search=filters.search, status=filters.status) }}"
+               class="tg-filter-btn {% if filters.type == 'bug' %}active{% endif %}">🐛 Баги</a>
+            <a href="{{ url_for('admin.feedback_list', type='feature', search=filters.search, status=filters.status) }}"
+               class="tg-filter-btn {% if filters.type == 'feature' %}active{% endif %}">💡 Идеи</a>
+        </div>
+
+        <div class="tg-search-wrap">
+            <form method="GET" id="search-form">
+                <input type="hidden" name="status" value="{{ filters.status }}">
+                <input type="hidden" name="type" value="{{ filters.type }}">
+                <input type="text" name="search" value="{{ filters.search }}"
+                       placeholder="Поиск…"
+                       onchange="document.getElementById('search-form').submit()">
+            </form>
+        </div>
+
+        <div class="tg-chat-list">
+            {% if feedbacks.items %}
+                {% for fb in feedbacks.items %}
+                <a href="{{ url_for('admin.feedback_detail', feedback_id=fb.id) }}"
+                   class="tg-chat-item">
+                    <div style="padding-top:2px">
+                        <input type="checkbox" name="feedback_ids" value="{{ fb.id }}"
+                               class="feedback-checkbox" onclick="event.stopPropagation()">
+                    </div>
+                    <div class="tg-av av-{{ fb.type }}">
+                        {{ (fb.username or 'АН')[:2]|upper }}
+                    </div>
+                    <div class="tg-ci-body">
+                        <div class="tg-ci-top">
+                            <span class="tg-ci-name">{{ fb.username or 'Аноним' }}</span>
+                            <span class="tg-ci-time">{{ fb.created_at.strftime('%d.%m') }}</span>
+                        </div>
+                        <div class="tg-ci-prev">
+                            {% if fb.type == 'bug' %}🐛{% elif fb.type == 'feature' %}💡{% elif fb.type == 'question' %}❓{% else %}📦{% endif %}
+                            {{ fb.title[:44] }}{% if fb.title|length > 44 %}…{% endif %}
+                        </div>
+                        <div class="tg-ci-row2">
+                            <span class="tg-status-pill s-{{ fb.status }}">
+                                {% if fb.status == 'new' %}новое
+                                {% elif fb.status == 'in_progress' %}в работе
+                                {% elif fb.status == 'resolved' %}решено
+                                {% else %}отклонено{% endif %}
+                            </span>
+                            {% if fb.status == 'new' %}
+                                <span class="tg-unread">!</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+
+                {% if feedbacks.pages > 1 %}
+                <div class="d-flex justify-content-center gap-1 py-2">
+                    {% for p in range(1, feedbacks.pages + 1) %}
+                    <a href="{{ url_for('admin.feedback_list', page=p, status=filters.status, type=filters.type, search=filters.search) }}"
+                       class="btn btn-sm {% if p == feedbacks.page %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                       style="min-width:28px;padding:2px 5px;font-size:12px">{{ p }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+            {% else %}
+                <div class="tg-empty">
+                    <i class="bi bi-chat-square-dots" style="font-size:38px"></i>
+                    <p>Обращений не найдено</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="bulk-bar">
+            <small class="text-muted">Выбранные:</small>
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="doBulk('resolve')">
+                <i class="bi bi-check-circle"></i> Решить
+            </button>
+            <button type="button" class="btn btn-outline-warning btn-sm" onclick="doBulk('in_progress')">
+                <i class="bi bi-gear"></i> В работу
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="doBulk('delete')">
+                <i class="bi bi-trash"></i> Удалить
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" onclick="toggleAll()" title="Выбрать все">
+                <i class="bi bi-check2-square"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="tg-placeholder">
+        <i class="bi bi-chat-text" style="font-size:52px"></i>
+        <p style="font-size:15px">Выберите обращение</p>
+        <small>нажмите на диалог слева</small>
+    </div>
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allSel = false;
+function toggleAll() {
+    allSel = !allSel;
+    document.querySelectorAll('.feedback-checkbox').forEach(cb => cb.checked = allSel);
+}
+function doBulk(action) {
+    const checked = document.querySelectorAll('.feedback-checkbox:checked');
+    if (!checked.length) { alert('Выберите хотя бы одно обращение'); return; }
+    if (action === 'delete' && !confirm('Удалить ' + checked.length + ' обращений?')) return;
+    document.getElementById('bulk-action-val').value = action;
+    document.getElementById('bulk-form').submit();
+}
+</script>
+{% endblock %}

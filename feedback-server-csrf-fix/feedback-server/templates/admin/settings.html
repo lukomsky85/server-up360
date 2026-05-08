@@ -1,0 +1,58 @@
+{% extends 'admin/base.html' %}
+{% block title %}Настройки • Feedback Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">⚙️ Настройки сервера</h2>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Webhook Timeout (секунд)</label>
+                <input type="number" name="setting_webhook_timeout" class="form-control" 
+                       value="{{ settings_dict.get('webhook_timeout', '30') }}">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Webhook Retry Count</label>
+                <input type="number" name="setting_webhook_retry_count" class="form-control" 
+                       value="{{ settings_dict.get('webhook_retry_count', '3') }}">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Items Per Page</label>
+                <input type="number" name="setting_items_per_page" class="form-control" 
+                       value="{{ settings_dict.get('items_per_page', '50') }}">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Auto Cleanup Days</label>
+                <input type="number" name="setting_auto_cleanup_days" class="form-control" 
+                       value="{{ settings_dict.get('auto_cleanup_days', '90') }}">
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="setting_enable_registration" class="form-check-input" id="enable_registration"
+                       {% if settings_dict.get('enable_registration') == 'true' %}checked{% endif %}>
+                <label class="form-check-label" for="enable_registration">
+                    Включить регистрацию новых пользователей
+                </label>
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="setting_maintenance_mode" class="form-check-input" id="maintenance_mode"
+                       {% if settings_dict.get('maintenance_mode') == 'true' %}checked{% endif %}>
+                <label class="form-check-label" for="maintenance_mode">
+                    Режим обслуживания
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Сохранить настройки
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

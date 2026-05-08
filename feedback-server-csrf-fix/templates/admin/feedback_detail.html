@@ -1,0 +1,156 @@
+{% extends 'admin/base.html' %}
+{% block title %}Обращение #{{ feedback.id }} • Feedback Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">📝 Обращение #{{ feedback.id }}</h2>
+    <div>
+        <a href="{{ url_for('admin.feedback_list') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">{{ feedback.title }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Описание:</strong>
+                    <p class="mt-2">{{ feedback.description or 'Нет описания' }}</p>
+                </div>
+                
+                {% if feedback.attachments %}
+                <div class="mb-3">
+                    <strong>Вложения:</strong>
+                    <p class="mt-2">{{ feedback.attachments }}</p>
+                </div>
+                {% endif %}
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">Создано:</small><br>
+                        <strong>{{ feedback.created_at.strftime('%d.%m.%Y %H:%M:%S') }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Обновлено:</small><br>
+                        <strong>{{ feedback.updated_at.strftime('%d.%m.%Y %H:%M:%S') if feedback.updated_at else '—' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ответ разработчика -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">💬 Ответ разработчика</h5>
+            </div>
+            <div class="card-body">
+                <!-- ✅ ✅ ✅ ДОБАВЛЕН CSRF TOKEN -->
+                <form method="POST" action="{{ url_for('admin.respond_to_feedback', feedback_id=feedback.id) }}">
+                    
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    
+                    <div class="mb-3">
+                        <textarea name="response" class="form-control" rows="5" 
+                                  placeholder="Введите ваш ответ на обращение...">{{ feedback.developer_response or '' }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Изменить статус</label>
+                            <select name="status" class="form-select">
+                                <option value="new" {% if feedback.status == 'new' %}selected{% endif %}>🆕 Новое</option>
+                                <option value="in_progress" {% if feedback.status == 'in_progress' %}selected{% endif %}>⚙️ В работе</option>
+                                <option value="resolved" {% if feedback.status == 'resolved' %}selected{% endif %}>✅ Решено</option>
+                                <option value="rejected" {% if feedback.status == 'rejected' %}selected{% endif %}>❌ Отклонено</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="form-check">
+                                <input type="checkbox" name="send_webhook" class="form-check-input" id="send_webhook" checked>
+                                <label class="form-check-label" for="send_webhook">
+                                    Отправить вебхук
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-send"></i> Отправить ответ
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Информация об авторе -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">👤 Информация</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Имя:</strong> {{ feedback.username or 'Аноним' }}</p>
+                <p><strong>Email:</strong> {{ feedback.email or 'Не указан' }}</p>
+                <p><strong>Клиент ID:</strong> {{ feedback.client_id or 'Не указан' }}</p>
+                <p><strong>Webhook URL:</strong> {{ feedback.webhook_url or 'Не указан' }}</p>
+            </div>
+        </div>
+        
+        <!-- Похожие обращения -->
+        {% if similar %}
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🔄 Похожие обращения</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for sim in similar %}
+                <a href="{{ url_for('admin.feedback_detail', feedback_id=sim.id) }}" class="list-group-item list-group-item-action">
+                    <small class="text-muted">#{{ sim.id }}</small>
+                    <strong>{{ sim.title[:40] }}</strong>
+                    <br>
+                    <small class="text-muted">{{ sim.created_at.strftime('%d.%m.%Y') }}</small>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- История вебхуков -->
+        {% if webhook_logs %}
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📡 История вебхуков</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for log in webhook_logs %}
+                    <div class="list-group-item">
+                        <small class="text-muted">{{ log.sent_at.strftime('%d.%m.%Y %H:%M:%S') }}</small>
+                        <br>
+                        <span class="badge {{ 'bg-success' if log.success else 'bg-danger' }}">
+                            {{ 'Успешно' if log.success else 'Ошибка' }}
+                        </span>
+                        {% if log.error_message %}
+                        <br>
+                        <small class="text-danger">{{ log.error_message[:100] }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

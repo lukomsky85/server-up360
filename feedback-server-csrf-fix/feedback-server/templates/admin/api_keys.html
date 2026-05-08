@@ -1,0 +1,127 @@
+{% extends 'admin/base.html' %}
+{% block title %}API Ключи • Feedback Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">🔑 API Ключи</h2>
+    <a href="{{ url_for('admin.api_key_create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Создать ключ
+    </a>
+</div>
+
+<!-- Список API ключей -->
+<div class="card">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0">API Ключи</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Название</th>
+                    <th>Ключ</th>
+                    <th>Описание</th>
+                    <th>Лимит</th>
+                    <th>Использовано</th>
+                    <th>Статус</th>
+                    <th>Создан</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in api_keys %}
+                <tr>
+                    <td>
+                        <strong>{{ key.name }}</strong>
+                    </td>
+                    <td>
+                        <code class="small">{{ key.key[:20] }}...</code>
+                        <button class="btn btn-sm btn-link p-0 ms-2 copy-key" data-key="{{ key.key }}" title="Копировать">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ key.description or '—' }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">{{ key.rate_limit }}/мин</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ key.requests_count or 0 }}</span>
+                    </td>
+                    <td>
+                        {% if key.is_active %}
+                            <span class="badge bg-success">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Заблокирован</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ key.created_at.strftime('%d.%m.%Y') }}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <form method="POST" action="{{ url_for('admin.api_key_toggle', key_id=key.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-outline-secondary" title="Вкл/Выкл">
+                                    <i class="bi bi-power"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.api_key_delete', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Удалить ключ {{ key.name }}?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-outline-danger" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-key fs-1 d-block mb-2"></i>
+                        Нет созданных API ключей
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Копирование ключа
+document.querySelectorAll('.copy-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        navigator.clipboard.writeText(key);
+        
+        // Показать уведомление
+        const originalIcon = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        setTimeout(() => {
+            btn.innerHTML = originalIcon;
+        }, 2000);
+        
+        // Всплывающее уведомление
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 p-3';
+        toast.style.zIndex = '11';
+        toast.innerHTML = `
+            <div class="toast show" role="alert">
+                <div class="toast-header">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong class="me-auto">Скопировано</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    API ключ скопирован в буфер обмена
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    });
+});
+</script>
+{% endblock %}
